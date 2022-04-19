@@ -12,14 +12,14 @@ Mount SAMBA/SMB/CIFS volumes Linux
 # Purpose: Check if there is an SMB Server in your network and mount shares from it
 #	If a share is already mounted prompt and Unmount it if it is no longer required.
 #	The mount point is created and destroyed after use 
-# (to prevent	automatic backup software to backup in the directory if the device is not mounted)
+# (to prevent filling the mount directory if the device is not mounted)
 
 #  1) Install cifs-utils (sudo dnf install cifs-utils) (probably not required in FC32 but try without first) HHP 20200509
 #  2)If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
 #  3) Change the first four variables according to your configuration. Or maintain a .ini file with the four variables. Can be created by the script if neccessary
 #  4) Run this program at login or from your $HOME  when your network is ready
-# a .desktop file is provieded (Copy to $HOME/Desktop)
-#	(need to use sudo.. so run the skeleton script mntSMB which will call this script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
+# a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
+#	(need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
 # Ensure that you are an valid sudoer and add this line to /etc/sudoers
 # %wheel	ALL=(ALL)	NOPASSWD: ALL
 # or %sudoers	ALL=(ALL)	NOPASSWD: ALL
