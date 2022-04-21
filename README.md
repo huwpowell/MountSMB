@@ -2,13 +2,13 @@
 # Mount SAMBA/SMB/CIFS volumes Linux
 
 # Purpose: 
-Check if there is an SMB Server in your network and mount shares from it
+Check if there is an SMB Server in your network and mount shares from it.
 If a share is already mounted prompt and Unmount it if it is no longer required.
 The mount point is created and destroyed after use 
 (to prevent filling the mount directory if the device is not mounted)
 
 Runs on all GNU/Linux distros (install cifs-utils) (maybe required. Try without first HHP 20200513)
-UNUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
+UBUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
 
 Authors: Huw Hamer Powell <huw@huwpowell.com> and Daniel Graziotinand
 
