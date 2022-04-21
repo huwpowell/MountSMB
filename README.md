@@ -16,13 +16,18 @@ Authors: Huw Hamer Powell <huw@huwpowell.com> and Daniel Graziotinand
 2)If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
 3) Change the first four variables according to your configuration. Or maintain a .ini file with the four variables. Can be created by the script if neccessary
 4) Run this program at login or from your $HOME  when your network is ready
+
 a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
-(need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
+
+need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
 
 # Ensure that you are an valid sudoer and add this line to /etc/sudoers
-# %wheel	ALL=(ALL)	NOPASSWD: ALL
-# %sudoers	ALL=(ALL)	NOPASSWD: ALL
-# Whichever works for you. This will prevent having to enter the sudo password each time it is run
+
+%wheel	ALL=(ALL)	NOPASSWD: ALL
+
+%sudoers	ALL=(ALL)	NOPASSWD: ALL
+
+Whichever works for you. This will prevent having to enter the sudo password each time it is run
 
 Also, run it on logoff to umount any mounted shares (Will remove the mount point directory).
 It does not matter if you don't , Just cleaner if you do :)
