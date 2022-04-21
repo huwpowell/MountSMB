@@ -22,19 +22,21 @@ a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
 # Ensure that you are an valid sudoer and add this line to /etc/sudoers
 # %wheel	ALL=(ALL)	NOPASSWD: ALL
 # %sudoers	ALL=(ALL)	NOPASSWD: ALL
-#W hichever works for you. This will prevent having to enter the sudo password each time it is run
+# Whichever works for you. This will prevent having to enter the sudo password each time it is run
 
 Also, run it on logoff to umount any mounted shares (Will remove the mount point directory).
 It does not matter if you don't , Just cleaner if you do :)
 
-# ----------------------------------------------
+----------------------------------------------
+
 Version 3, enhanced for Ubuntu 13.X+, Fedora 35+, and similar distros.
 Runs on all GNU/Linux distros (install cifs-utils)
 
 Version 4, Crafted a mod for FC32+ and added some visible interactions using zenity/yad ..Else silent) HHP 20210509
 Added the use of zenity/yad to produce dialog in Gnome
 Added proper mount options to cope with SMB Vers=1.0 and x display icons for mounted drives
-# ----------------------------------------------
+
+----------------------------------------------
 
 This program is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it
