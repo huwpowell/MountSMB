@@ -21,7 +21,7 @@ a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
 
 need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
 
-# Ensure that you are an valid sudoer and add this line to /etc/sudoers
+# Ensure that you are a valid sudoer and add this line to /etc/sudoers
 
 %wheel	ALL=(ALL)	NOPASSWD: ALL
 
