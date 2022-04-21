@@ -20,9 +20,9 @@ a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
 (need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
 
 # Ensure that you are an valid sudoer and add this line to /etc/sudoers
-#%wheel	ALL=(ALL)	NOPASSWD: ALL
-#%sudoers	ALL=(ALL)	NOPASSWD: ALL
-#Whichever works for you. This will prevent having to enter the sudo password each time it is run
+# %wheel	ALL=(ALL)	NOPASSWD: ALL
+# %sudoers	ALL=(ALL)	NOPASSWD: ALL
+#W hichever works for you. This will prevent having to enter the sudo password each time it is run
 
 Also, run it on logoff to umount any mounted shares (Will remove the mount point directory).
 It does not matter if you don't , Just cleaner if you do :)
