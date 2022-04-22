@@ -198,7 +198,7 @@ function show-progress() {
 	SP_RTN=$(cat $SPtmp_out) 							# Read any error message or output from command ($3) from the tmp file 
 	rm -f $SPtmp_out								# delete temp file after reading content
 } 											# return the output from the command in the variable  $SP_RTN	
-#------ yad test --------------
+#------ yad test -------------- Not used in this script.. It is Just a testbed
 
 function yad-test () {
 
@@ -540,7 +540,7 @@ do
 				--field="User " "$SMB_USER" \
 				--field="Password ":H "$SMB_PASSWORD" \
 				--field="\n<b>Select 'Ignore' to ignore any changes here and proceed to mount with default values\n \
-				\nOtherwise select 'Use' to accept any changes made here</b>\n":LBL \
+				\nOtherwise select 'Mount' to accept any changes made here</b>\n":LBL \
 				--field="":LBL \
 				--button="Save as Default":2 --button="Ignore - Use Defaults":1 --button="Mount - This Volume":0 \
 			 )
