@@ -17,7 +17,7 @@
 # Runs on all GNU/Linux distros (install cifs-utils) (maybe required. Try without first HHP 20200513)
 # UNUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
 
-# Authors: Daniel Graziotinand and Huw Hamer Powell <huw@huwpowell.com>
+# Authors: Huw Hamer Powell <huw@huwpowell.com>
 # Purpose: Check if there is an SMB Server in your network and mount shares from it
 #	If a share is already mounted prompt and Unmount it if it is already mounted.
 #	The mount point is created and destroyed after use (to prevent
@@ -38,6 +38,12 @@ SMB_USER="`hostname`"					# The User id ON THE SMB Server .. else Guest/anonymou
 SMB_PASSWORD="88888888"					# Password for the Above SMB Server User, prefix special characters, e.g.
 #------
 
+TIMEOUTDELAY=5						# timeout for dialogs and messages. (in seconds)
+YADTIMEOUTDELAY=$(($TIMEOUTDELAY*4))			# Extra time for completing the initial form and where necessary
+
+MOUNT_POINT_ROOT=/media					# Base folder for mounting (/media recommended bit could be /mnt or other choice)
+
+
 #------------ SMB PROTOCOL LEVEL IMPORTANT!!!!!!!!! -----------
 #------------ if you use Apple TimeCapsule --------------------
 # We use smbclient to find out the available shares on the TimeCapsule SAMBA/WINDOWS/SMB server 
@@ -54,101 +60,10 @@ SMBCLIENT_USER="-N"						# To check with Guest login using selected protocol (e.
 #SMBCLIENT_USER="-U%$SMB_PASSWORD"			# To check with UserName%password and using selected Protocol
 
 #------------ end SMB PROTOCOL LEVEL IMPORTANT!!!!!!!!! -----------
-
 #
 ######## !!!!!!!!!!!!!! DON'T MODIFY ANYTHING BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING !!!!!!!!!!!!!! ##########
 ######## !!!!!!!!!!!!!! DON'T MODIFY ANYTHING BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING !!!!!!!!!!!!!! ##########
 #
-# -- Check Dependancies -----
-
-# We need to have
-# 1. cifs-utils/samba-client to allow the searching for, mounting and manipulation of cifs volumes
-# 2. nmblookup and smbclient to snoop what volumes are shared on the SMB servers available
-# 3. yad to give functional and usable dialog inputs
-
-NOTINSTALLED_MSG=""						# Start with a blank message
-#1.. Look for nmblookup
-
-which nmblookup >>/dev/null 2>&1				# see if nmblookup is installed
-if [ $? != "0" ]; then
-	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"nmblookup\n"		# indicate not installed	
-fi
-
-#2.. Look for smbclient
-
-which smbclient >>/dev/null 2>&1				# see if smbclient is installed
-if [ $? != "0" ]; then
-       	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"smbclient\n"		# indicate not installed		
-fi
-
-#3.. Look for yad
-
-which yad >>/dev/null 2>&1					# see if yad is installed
-if [ $? != "0" ]; then
-	YADNOTINSTALLED_MSG="yad not found!\nInstall yad package\n Using\n\n 'sudo dnf install yad' (Fedora/RedHat)\n\n'sudo apt install yad' UBUNTU/Debian"
-
-	zenity	--warning --no-wrap \
-	--title="YAD Missing" \
-	--text="$YADNOTINSTALLED_MSG" \
-
-fi
-
-if [ -n "$NOTINSTALLED_MSG" ]; then
-	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient' UBUNTU/Debian"
-
-	zenity	--error --no-wrap \
-	--title="Missing Dependancies" \
-	--text="$NOTINSTALLED_MSG" \
-
-	exit							# exit and fail to run	
-fi
-# -- END Check Dependancies -----
-
-# -- Proceed
-
-#----- Read $1 and set the User and Group ID for the mount command
-# Since we have to run this scipt using sudo we need the actual user UID. This is set by the execution script that called us
-# The UID is passed as $arg1 i.e "./mntSMB $SMB_ID" (see the mntSMB script) comes as 'uid=nnnn gid=nnnn'
-# We need to use awk to add the commas into it to use as input to mount
-
-SMB_UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2,"," ;} '  <<<$1)
-SMB_UNAME=$2						# Get the actual name of the calling user
-#
-if [ -f $0.ini ]; then
-	. $0.ini					# include the variables from the .ini file (Will orerwrite the above if $0.ini found)
-fi							# If you comment out/delete the SMB_USER line in the .ini it will default to `hostname` as above
-							# this is the default behavior. Uncomment it if you wat to force a specific user name
-if [ -f $0.last ]; then						
-	. $0.last					# load last sucessful mounted options if they exist (Overwrites .ini)
-fi
-
-TIMEOUTDELAY=5						# timeout for dialogs and messages. (in seconds)
-YADTIMEOUTDELAY=$(($TIMEOUTDELAY*4))			# Extra time for completing the initial form and where necessary
-
-MOUNT_POINT_ROOT=/media					# Base folder for mounting (/media recommended bit could be /mnt or other choice)
-
-if [ ! -z $SMB_UNAME ] ; then
-	MOUNT_POINT_ROOT=$MOUNT_POINT_ROOT"/$SMB_UNAME"	# Append the user calling user name if set as $2
-	mkdir $MOUNT_POINT_ROOT				# make the mountpoint directory if required. p
-fi
-
-xhost +si:localuser:root					# allow access to the Xserver
-which yad >>/dev/null 2>&1					# see if yad is installed
-if [ $? = "0" ]; then
-	USEYAD=true 						# Use yad if we can (Maybe suggest to install later ..note to self.. TBD)
-	export GDK_BACKEND=x11					# needed to make yad work correctly
-
-	if [ -f $0.png ]; then
-		YAD_ICON=$0.png 				# Use our Icon if we can ($0.png is an icon of a timecapsule
-	       							# (Not required but just nice if we can)
-	else
-		YAD_ICON=drive-harddisk				# Default Icon in the Yad Dialogs from system
-	fi
-	export YAD_ICON
-else 
-	USEYAD=false						# yad is not installed, fall back to zenity
-fi
-
 #---------------------------------------------------------------- Functions -----------------------------------------------------------------------------
 
 #-------------save-vars-----------
@@ -355,7 +270,6 @@ function select-mounted() {
 				<<< "$MOUNTED_VOLS"
 		)
 
-#		if [ $? = "2" ]
 		if [ -n "$OUT" ]						# if anything was selected
 			then 
 			VOLS2UMOUNT=$(echo "$OUT" \
@@ -439,9 +353,96 @@ function select-share() {
 	
 	}
 
+#---------------- end select-share -------------
+
 export -f select-mounted select-share select-server
 
 # --------------------------------------------------------------------End functions------------------------------------------------------------------------
+
+# -- Proceed with Main()
+
+# -- Check Dependancies -----
+
+# We need to have
+# 1. cifs-utils/samba-client to allow the searching for, mounting and manipulation of cifs volumes
+# 2. nmblookup and smbclient to snoop what volumes are shared on the SMB servers available
+# 3. yad to give functional and usable dialog inputs
+
+NOTINSTALLED_MSG=""						# Start with a blank message
+#1.. Look for nmblookup
+
+which nmblookup >>/dev/null 2>&1				# see if nmblookup is installed
+if [ $? != "0" ]; then
+	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"nmblookup\n"		# indicate not installed	
+fi
+
+#2.. Look for smbclient
+
+which smbclient >>/dev/null 2>&1				# see if smbclient is installed
+if [ $? != "0" ]; then
+       	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"smbclient\n"		# indicate not installed		
+fi
+
+#3.. Look for yad
+
+which yad >>/dev/null 2>&1					# see if yad is installed
+if [ $? != "0" ]; then
+	YADNOTINSTALLED_MSG="yad not found!\nInstall yad package\n Using\n\n 'sudo dnf install yad' (Fedora/RedHat)\n\n'sudo apt install yad' UBUNTU/Debian"
+
+	zenity	--warning --no-wrap \
+	--title="YAD Missing" \
+	--text="$YADNOTINSTALLED_MSG" \
+
+fi
+
+if [ -n "$NOTINSTALLED_MSG" ]; then
+	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient' UBUNTU/Debian"
+
+	zenity	--error --no-wrap \
+	--title="Missing Dependancies" \
+	--text="$NOTINSTALLED_MSG" \
+
+	exit							# exit and fail to run	
+fi
+# -- END Check Dependancies -----
+
+#----- Read $1 and set the User and Group ID for the mount command
+# Since we have to run this scipt using sudo we need the actual user UID. This is set by the execution script that called us
+# The UID is passed as $arg1 i.e "./mntSMB $SMB_ID" (see the mntSMB script) comes as 'uid=nnnn gid=nnnn'
+# We need to use awk to add the commas into it to use as input to mount
+
+SMB_UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2,"," ;} '  <<<$1)
+SMB_UNAME=$2						# Get the actual name of the calling user
+#
+if [ -f $0.ini ]; then
+	. $0.ini					# include the variables from the .ini file (Will orerwrite the above if $0.ini found)
+fi							# If you comment out/delete the SMB_USER line in the .ini it will default to `hostname` as above
+							# this is the default behavior. Uncomment it if you wat to force a specific user name
+if [ -f $0.last ]; then						
+	. $0.last					# load last sucessful mounted options if they exist (Overwrites .ini)
+fi
+
+if [ ! -z $SMB_UNAME ] ; then
+	MOUNT_POINT_ROOT=$MOUNT_POINT_ROOT"/$SMB_UNAME"	# Append the user calling user name if set as $2
+	mkdir $MOUNT_POINT_ROOT				# make the mountpoint directory if required. p
+fi
+
+xhost +si:localuser:root					# allow access to the Xserver
+which yad >>/dev/null 2>&1					# see if yad is installed
+if [ $? = "0" ]; then
+	USEYAD=true 						# Use yad if we can (Maybe suggest to install later ..note to self.. TBD)
+	export GDK_BACKEND=x11					# needed to make yad work correctly
+
+	if [ -f $0.png ]; then
+		YAD_ICON=$0.png 				# Use our Icon if we can ($0.png is an icon of a timecapsule
+	       							# (Not required but just nice if we can)
+	else
+		YAD_ICON=drive-harddisk				# Default Icon in the Yad Dialogs from system
+	fi
+	export YAD_ICON
+else 
+	USEYAD=false						# yad is not installed, fall back to zenity
+fi
 
 # Start Processing
 
@@ -573,7 +574,7 @@ do
 	tSMB_IP="$tSMB_IP "					# Add a trailing space for the 'cut' commmand below
 	tSMB_IP=$(echo "$tSMB_IP" \
 		|cut -d" " -s -f1 \
-		|tr -d '[:space:]')					# Get the IP address ONLY from the inut
+		|tr -d '[:space:]')					# Get the IP address ONLY from the input
 	
 	ENTRYerr=""					# Collect the blank field names 
 	if [ -z "$tSMB_IP" ]; then ENTRYerr="$ENTRYerr IP,"
@@ -635,7 +636,7 @@ do
 		SMB_IP="$SMB_IP "					# Add a trailing space for the 'cut' commmand below
 		SMB_IP=$(echo "$SMB_IP" \
 		|cut -d" " -s -f1 \
-		|tr -d '[:space:]')					# Get the IP address only from the inut (remeber we exchanged the ' ' for '-' when we formatted the list
+		|tr -d '[:space:]')					# Get the IP address only from the input (remember we exchanged the ' ' for '-' when we formatted the list
 	
 		InputPending=false					# got the input that we wanted, None of the fields are blank, moved them into the variables and continue
 
