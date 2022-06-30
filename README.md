@@ -10,7 +10,7 @@ The mount point is created and destroyed after use
 Runs on all GNU/Linux distros (install cifs-utils) (maybe required. Try without first HHP 20200513)
 UBUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
 
-Authors: Huw Hamer Powell <huw@huwpowell.com> and Daniel Graziotinand
+Authors: Huw Hamer Powell <huw@huwpowell.com>
 
 1) Install cifs-utils (sudo dnf install cifs-utils) (probably not required in FC32 but try without first)
 2)If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
