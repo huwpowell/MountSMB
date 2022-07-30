@@ -7,6 +7,13 @@
 # See http://sam.zoy.org/wtfpl/COPYING for more details.
 # or https://en.wikipedia.org/wiki/WTFPL
 
+# Authors: Huw Hamer Powell <huw@huwpowell.com>
+# Purpose: Check if there is an SMB Server in your network and mount shares from it
+#	If a share is already mounted prompt and Unmount it if it is already mounted.
+#	The mount point is created and destroyed after use (to prevent
+#	automatic backup software to backup in the directory if the device
+#	is not mounted)
+
 # Version 3, enhanced for Ubuntu 13.X+, Fedora 35+, and similar distros.
 # Runs on all GNU/Linux distros (install cifs-utils)
 
@@ -16,13 +23,6 @@
 
 # Runs on all GNU/Linux distros (install cifs-utils) (maybe required. Try without first HHP 20200513)
 # UNUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
-
-# Authors: Huw Hamer Powell <huw@huwpowell.com>
-# Purpose: Check if there is an SMB Server in your network and mount shares from it
-#	If a share is already mounted prompt and Unmount it if it is already mounted.
-#	The mount point is created and destroyed after use (to prevent
-#	automatic backup software to backup in the directory if the device
-#	is not mounted)
 
 #  1) Install cifs-utils (sudo dnf install cifs-utils) (probably not required in FC32 but try without first) HHP 20200509
 #  2)If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
@@ -266,7 +266,8 @@ function select-mounted() {
 				--column="Sel" \
 				--column="Share" \
 				--column="MountPoint" \
-				--button="Proceed":2 \
+				--button="uMount Selected":2 \
+				--button="Proceed":3 \
 				<<< "$MOUNTED_VOLS"
 		)
 
