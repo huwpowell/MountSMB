@@ -199,7 +199,7 @@ function set-netbiosname() {
 # -------------- END set-netbiosname -------
 #--------------- select-mounted -------------
 function select-mounted() {
-
+	M_PROCEED=''
 # Find out what is currently mounted
 	show-progress "Initializing" "Finding mounted Shares" \
 	"mount"												# find out what SMB/CIFS shares are currently mounted
@@ -224,7 +224,6 @@ function select-mounted() {
 
 	if [ -n "$MOUNTED_VOLS" ]									# if anything is mounted switch the IP address to be the NETBIOSNAME
 	then
-
 		while IFS= read -r VOL; do
 #
 			M_IP=$(echo $VOL \
@@ -279,6 +278,8 @@ function select-mounted() {
 										# add single quotes in case there is a space in the volume name
 			while IFS= read -r VOL; do
 				unmount "$VOL"					# Unmount the selected volume(s)
+				M_PROCEED='no'					# force us to be called again
+										# if anything is unmounted
 			done <<<$VOLS2UMOUNT
 		fi								# endif anything selected for unmount
 
@@ -475,7 +476,11 @@ fi
 export SMB_SERVERS_AND_NAMES SMB_SERVERS AVAILABLE_VOLS					# Make availabe for the functions
 
 #	First of all .. Present a total list of any mounted volumes and give options to umount if required
-	select-mounted									# Present a list of currently mounted volumes 
+	M_PROCEED='no'
+	while [ "$M_PROCEED" ]
+	do
+		select-mounted								# Present a list of currently mounted volumes
+	done								# repeatedly until nothing is mounted or Proceed button selected
 #	Then .. Present a total list of any shares available on the subnet for preliminary selection
 	select-share									# Select a server and share from the selection list (Returns IP|NETBIOSNAME|SHARE)
 		if [ -n "$SP_RTN" ]; then
