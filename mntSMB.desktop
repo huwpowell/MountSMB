@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=./mntSMB
+Comment=Mount/Unmount cifs shares
+Icon=gnome-fs-smb
+Name=mntSMB
+GenericName=Mount SMB, Windows and TimeCapsule Drives
