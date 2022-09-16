@@ -391,12 +391,12 @@ fi
 # The UID is passed as $arg1 i.e "./mntSMB $SMB_ID" (see the mntSMB script) comes as 'uid=nnnn gid=nnnn'
 # We need to use awk to add the commas into it to use as input to mount
 
-SMB_UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2,"," ;} '  <<<$1)
+SMB_UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2 ;} '  <<<$1)
 SMB_UNAME=$2						# Get the actual name of the calling user/script
 #
 if [ -f $SMB_UNAME.ini ]; then
 	. $SMB_UNAME.ini				# include the variables from the .ini file (Will orerwrite the above if $2.ini found)
-fi							# If you comment out/delete the SMB_USER line in the .ini it will default to `hostname` as above
+fi
 							# this is the default behavior. Uncomment it if you wat to force a specific user name
 if [ -f $SMB_UNAME.last ]; then						
 	. $SMB_UNAME.last				# load last sucessful mounted options if they exist (Overwrites .ini)
@@ -420,7 +420,11 @@ if [ $? = "0" ]; then
 	       							# (Not required but just nice if we can)
 	else
 		YAD_ICON=gnome-fs-smb				# Default Icon in the YadDialogs from system
+#		YAD_ICON=gnome-fs-ftp				# Default Icon in the YadDialogs from system
+#		YAD_ICON=gnome-fs-nfs				# Default Icon in the YadDialogs from system
 #		YAD_ICON=drive-harddisk				# Default Icon in the YadDialogs from system
+#		YAD_ICON=network-server				# Default Icon in the YadDialogs from system
+
 	fi
 	export YAD_ICON
 else 
@@ -696,14 +700,14 @@ else		# Not yet mounted so Proceed to attempt mounting
 
 		if [ "$MOUNT_POINT" != "$MOUNT_POINT_ROOT" ]; then			# Dont try to create the mount root if mount point is not set correcly
 
-			if [ ! -d $MOUNT_POINT ]; then
-				mkdir $MOUNT_POINT		# make the mountpoint directory if required.
+			if [ ! -d "$MOUNT_POINT" ]; then
+				mkdir "$MOUNT_POINT"		# make the mountpoint directory if required.
 			fi
 		fi
 # ---------- mount and trap any error message
+		MNT_CMD="mount -t cifs '$SMB_PATH' '$MOUNT_POINT' -o $SMB_UID,user=$SMB_USER,pass=$SMB_PASSWORD,rw,file_mode=0777,dir_mode=0777,x-gvfs-show"
+		show-progress "Mounting" "Attempting to mount $SMB_PATH" "$MNT_CMD"
 		
-		show-progress "Mounting" "Attempting to mount $SMB_PATH" \
-		"mount -t cifs '$SMB_PATH' '$MOUNT_POINT' -o "$SMB_UID"user=$SMB_USER,pass=$SMB_PASSWORD,rw,file_mode=0777,dir_mode=0777,x-gvfs-show"
 
 		ERR=$(echo "$SP_RTN")							# Read any error message
 
@@ -726,7 +730,6 @@ else		# Not yet mounted so Proceed to attempt mounting
 			zenity	--error --no-wrap \
 				--title="Volume is NOT Mounted" \
 				--text="Something went wrong!!...  \n\n $ERR \n\n Failed to mount SMB Volume $SMB_PATH at $MOUNT_POINT try again  " \
-				--timeout=$TIMEOUTDELAY
 
 			exit 1
 		fi		# end if mount -t cifs $SMB_PATH
