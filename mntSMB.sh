@@ -64,9 +64,42 @@ SMBCLIENT_USER="-N"						# To check with Guest login using selected protocol (e.
 ######## !!!!!!!!!!!!!! DON'T MODIFY ANYTHING BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING !!!!!!!!!!!!!! ##########
 ######## !!!!!!!!!!!!!! DON'T MODIFY ANYTHING BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING !!!!!!!!!!!!!! ##########
 #
-#---------------------------------------------------------------- Functions -----------------------------------------------------------------------------
+#-------Functions -----------------------------------------------------------------------------
+#------ yad test -------------- Not used in this script.. It is Just a testbed
 
-#-------------save-vars-----------
+function yad-test () {
+
+OUT=$(yad --on-top  --center --window-icon $YAD_ICON --image $YAD_ICON --geometry=800x800\
+	--center --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
+	--separator="," \
+	--list --radiolist \
+       	--columns=4 \
+      	--title "Select Share" \
+	--button="Select":2  \
+	--button="Cancel":1 \
+	--column "Sel" \
+	--column "Server" \
+	--column "Share" \
+	--column "Comment" \
+      	True "List contents of your Documents Folder" 'ls $HOME/Documents' "comment"\
+      	False "List contents of your Downloads folder" 'ls $HOME/Downloads' "Comment" \
+      	False "List contents of your Videos folder" 'ls $HOME/Videos' "Comment"
+	)	
+	if [ $? = "1" ]
+		then exit
+	fi
+	
+	OUT=$(echo "$OUT" \
+	| cut -d "|" -s -f2,3 \
+	| paste -s -d"|" \
+	)
+	echo "" \
+	echo "The output from Yad is  '$OUT'" \
+	; echo ""
+
+	}
+#------ end yad test -------
+#-------save-vars-----------
 function save-vars() {
 # Save the defaults into the .ini or .last file
 
@@ -109,42 +142,7 @@ function show-progress() {
 	SP_RTN=$(cat $SPtmp_out) 							# Read any error message or output from command ($3) from the tmp file 
 	rm -f $SPtmp_out								# delete temp file after reading content
 } 											# return the output from the command in the variable  $SP_RTN	
-#------ yad test -------------- Not used in this script.. It is Just a testbed
-
-function yad-test () {
-
-OUT=$(yad --on-top  --center --window-icon $YAD_ICON --image $YAD_ICON --geometry=800x800\
-	--center --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
-	--separator="," \
-	--list --radiolist \
-       	--columns=4 \
-      	--title "Select Share" \
-	--button="Select":2  \
-	--button="Cancel":1 \
-	--column "Sel" \
-	--column "Server" \
-	--column "Share" \
-	--column "Comment" \
-      	True "List contents of your Documents Folder" 'ls $HOME/Documents' "comment"\
-      	False "List contents of your Downloads folder" 'ls $HOME/Downloads' "Comment" \
-      	False "List contents of your Videos folder" 'ls $HOME/Videos' "Comment"
-	)	
-	if [ $? = "1" ]
-		then exit
-	fi
-	
-	OUT=$(echo "$OUT" \
-	| cut -d "|" -s -f2,3 \
-	| paste -s -d"|" \
-	)
-	echo "" \
-	echo "The output from Yad is  '$OUT'" \
-	; echo ""
-
-	}
-#------ end yad test -----------
-
-# --------------- unmount -------------------
+# ---------- unmount -------------------
 # ---------- umount and trap any error message
 
 function unmount() {
@@ -178,7 +176,7 @@ function unmount() {
 	
 	}
 # -------------- END unmount ----------------
-#---------------- set-netbiosname -------------
+#--------------- set-netbiosname -------------
 function set-netbiosname() {
 
 	SMB_NETBIOSNAME=$(echo "$SMB_SERVERS_AND_NAMES" \
@@ -282,7 +280,6 @@ function select-mounted() {
 	fi									# endif anything mounted
 }
 # --------------- END select-mounted --------------
-
 #---------------- select-share -------------
 function select-share() {
 
@@ -305,7 +302,6 @@ function select-share() {
 			SELECT_VOLS=$(echo -e "$SELECT_VOLS\n$CHECK_VOLS")
 		fi
 	done
-#
 
 	OUT=$(yad --on-top  --center --window-icon $YAD_ICON --image $YAD_ICON --geometry=800x800\
 		--center --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
@@ -337,7 +333,7 @@ function select-share() {
 
 export -f select-mounted select-share
 
-# --------------------------------------------------------------------End functions------------------------------------------------------------------------
+# ------------End functions---------------------
 
 # -- Proceed with Main()
 
@@ -397,7 +393,6 @@ SMB_UNAME=$2						# Get the actual name of the calling user/script
 if [ -f $SMB_UNAME.ini ]; then
 	. $SMB_UNAME.ini				# include the variables from the .ini file (Will orerwrite the above if $2.ini found)
 fi
-							# this is the default behavior. Uncomment it if you wat to force a specific user name
 if [ -f $SMB_UNAME.last ]; then						
 	. $SMB_UNAME.last				# load last sucessful mounted options if they exist (Overwrites .ini)
 fi
@@ -458,8 +453,6 @@ fi
 		SMB_SERVERS_AND_NAMES=$(echo -e -n "$SMB_SERVERS_AND_NAMES\n$S_IP $S_NAME")	#2. Append the IP address and NETBIOS name to the list in $SMB_SERVERS_AND_NAMES
 	done
 
-export SMB_SERVERS_AND_NAMES SMB_SERVERS AVAILABLE_VOLS					# Make availabe for the functions
-
 #	First of all .. Present a total list of any mounted volumes and give options to umount if required
 	M_PROCEED='no'
 	while [ "$M_PROCEED" ]
@@ -471,7 +464,6 @@ export SMB_SERVERS_AND_NAMES SMB_SERVERS AVAILABLE_VOLS					# Make availabe for 
 		if [ -n "$SP_RTN" ]; then
 			IFS="|" read  SMB_IP SMB_NETBIOSNAME SMB_VOLUME tTail<<< "$SP_RTN"  # tTail picks up any spare seperators
 		fi
-#
 # Get user input to confirm default or selected values
 InputPending=true									# Haven't got valid user input yet
 while $InputPending
@@ -485,26 +477,26 @@ do
 			| grep -iwv $SMB_IP \
 			| awk ' { print $1, $2 } ' OFS=" - " \
 			| paste -s -d"!" \
-			) 								# select only and ALL lines except the last mounted Server IP
+			) 		# select only and ALL lines except the last mounted Server IP
 		fi
-#											# grep -iv ignores the last sucessful mounted server
-#											# the last mounted server. is added at the top of the list later
-#											# sed -e '/^$/d' \ removes any blank lines
-#											# Paste into one row delimted by '!' 
+					# grep -iv ignores the last sucessful mounted server
+					# the last mounted server. is added at the top of the list later
+					# sed -e '/^$/d' \ removes any blank lines
+					# Paste into one row delimited by '!' 
 		if [ -n "$CHECK_SRV" ]; then
-			CHECK_SRV="!$CHECK_SRV"						# if something found add a delimeter before it 
+			CHECK_SRV="!$CHECK_SRV"		# if something found add a delimeter before it 
 		fi
 
-		set-netbiosname $SMB_IP							# Get the NETBIOS name of the last used/selected server into SMB_NETBIOSNAME
-											# if it is offline dont include the pango markup set by set-netbiosname
+		set-netbiosname $SMB_IP			# Get the NETBIOS name of the last used/selected server into SMB_NETBIOSNAME
+							# if it is offline dont include the pango markup set by set-netbiosname
 		if ! $SMB_LASTSERVERONLINE ; then
-		SMB_NETBIOSNAME="**OFFLINE**"  						# Server is offline
+		SMB_NETBIOSNAME="**OFFLINE**"  		# Server is offline
 	fi
 
 # finally make the drop down list (Remember to consider that we changed the ' ' for '-' when we parse the result below	
 		SEL_AVAILABLE_SERVERS=$(echo $SMB_IP" - "$SMB_NETBIOSNAME$CHECK_SRV'!other' )
-											# Add the last used server at the top, append "other" to allow input of a server not found above
-											# Replace the one space seperator (' ') with ' - ' (Make it pretty) like the awk paste OFS above
+		# Add the last used server at the top, append "other" to allow input of a server not found above
+		# Replace the one space seperator (' ') with ' - ' (Make it pretty) like the awk paste OFS above
 #Format the Volumes list											
 		CHECK_VOLS=$(echo "$AVAILABLE_VOLS" \
 		| sed -e '/^$/d' \
@@ -512,13 +504,13 @@ do
 		| grep -iv "$SMB_VOLUME" \
 		| cut -d"|" -s -f2 \
 		| paste -s -d"!" \
-		) 									# select only and ALL lines for the selected Server IP the second field (Sharename)
-											# | sed -e '/^$/d' \ ignores any blank lines
-#											# grep -iv ignores the last sucessful mounted volume to avoid duplicates in the list
-#											# the last mounted vol. is added at the top of the list later
-#											# Paste into one row delimted by '!' i.e TimeCapsule!BigDisk
+		)			# select only and ALL lines for the selected Server IP the second field (Sharename)
+					# | sed -e '/^$/d' \ ignores any blank lines
+					# grep -iv ignores the last sucessful mounted volume to avoid duplicates in the list
+					# the last mounted vol. is added at the top of the list later
+					# Paste into one row delimited by '!' i.e TimeCapsule!BigDisk
 		if [ -n "$CHECK_VOLS" ]; then
-			CHECK_VOLS="!$CHECK_VOLS"						# if something found add a delimeter before it 
+			CHECK_VOLS="!$CHECK_VOLS"	# if something found add a delimeter before it 
 		fi
 		SEL_AVAILABLE_VOLS="$SMB_VOLUME$CHECK_VOLS!other"			# Add the last used volume at the top and append "other" to allow input of a share not found above
 
@@ -586,7 +578,7 @@ do
 	       	[[ $FORCESAVEINI ]]\
 		; then									# If anything changed or user selected save defaults button
 
-			if $USEYAD ; then		# Use zad if we can (Maybe suggest to install later ..note to self.. TBD)
+			if $USEYAD ; then		# Use yad if we can
 				SP_RTN=$(yad --form  --separator="," --center --on-top --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
 					--image=document-save \
 					--title="Save $SMB_UNAME.ini" \
