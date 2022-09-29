@@ -39,6 +39,7 @@ SMB_PASSWORD="88888888"					# Password for the Above SMB Server User, prefix spe
 #------
 SMB_MOUNT_POINT=/media					# Base folder for mounting (/media recommended but could be /mnt or other choice)
 
+NC_PORT=139						# Which port to use to connect during scanning
 TIMEOUTDELAY=5						# timeout for dialogs and messages. (in seconds)
 YADTIMEOUTDELAY=$(($TIMEOUTDELAY*4))			# Extra time for completing the initial form and where necessary
 
@@ -109,21 +110,203 @@ else
 	VAREXTN="$1"					# Take the extension from the arguments
 fi
 
-echo "# This file contains the variables to match your system and is included into the main script at runtime">$SMB_UNAME.$VAREXTN	# create the file
-echo "# if this file does not exist you will get the option to create it from the defaults in the main script">>$SMB_UNAME.$VAREXTN
-echo "">>$SMB_UNAME.$VAREXTN
+echo "# This file contains the variables to match your system and is included into the main script at runtime">$SMB_PNAME.$VAREXTN	# create the file
+echo "# if this file does not exist you will get the option to create it from the defaults in the main script">>$SMB_PNAME.$VAREXTN
+echo "">>$SMB_PNAME.$VAREXTN
 
-echo 'SMB_IP="'"$SMB_IP"'"		# e.g. 192.168.1.100' >>$SMB_UNAME.$VAREXTN
-echo 'SMB_VOLUME="'"$SMB_VOLUME"'"	# Whatever you named the Volume share' >>$SMB_UNAME.$VAREXTN
-echo 'SMB_USER="'"$SMB_USER"'"		# The User id ON THE SMB server' >>$SMB_UNAME.$VAREXTN
-echo 'SMB_PASSWORD="'"$SMB_PASSWORD"'"	# Password for the Above SMB Server User' >>$SMB_UNAME.$VAREXTN
-echo 'SMB_MOUNT_POINT="'"$SMB_MOUNT_POINT"'"	# Base folder for mounting (/media recommended but could be /mnt or other choice)' >>$SMB_UNAME.$VAREXTN
-echo "">>$SMB_UNAME.$VAREXTN
-echo "#-- Created `date` by `whoami` ----">>$SMB_UNAME.$VAREXTN
+echo 'SMB_IP="'"$SMB_IP"'"		# e.g. 192.168.1.100' >>$SMB_PNAME.$VAREXTN
+echo 'SMB_VOLUME="'"$SMB_VOLUME"'"	# Whatever you named the Volume share' >>$SMB_PNAME.$VAREXTN
+echo 'SMB_USER="'"$SMB_USER"'"		# The User id ON THE SMB server' >>$SMB_PNAME.$VAREXTN
+echo 'SMB_PASSWORD="'"$SMB_PASSWORD"'"	# Password for the Above SMB Server User' >>$SMB_PNAME.$VAREXTN
+echo 'SMB_MOUNT_POINT="'"$SMB_MOUNT_POINT"'"	# Base folder for mounting (/media recommended but could be /mnt or other choice)' >>$SMB_PNAME.$VAREXTN
+echo "">>$SMB_PNAME.$VAREXTN
+echo "#-- Created `date` by `whoami` ----">>$SMB_PNAME.$VAREXTN
 } # NOTE : The user name is not saved (commented out) to enable the hostname to be set next time around. Uncomment the line in the .ini file if a specific user name is required
 
 #-------------END save-vars-----------
-#------------ show-progress -------------
+#------------ do-exit ------------------
+function do-exit () {
+
+		zenity --warning --no-wrap --width=250 --timeout=$TIMEOUTDELAY\
+			--title="Restart" \
+			--text="<span foreground='red'><big><big><b>Exiting</b></big></big></span><span><b>\n\nResart for changes to take effect</b></span>"
+		exit				# Shutdown -- Go no further
+}
+#------------ END do-exit
+#------------- edit-file --------------------
+function edit-file() {
+# Edit a support file
+# Inputs $1=The file extension $2=A narrative/Instructions message
+SMB_FILE="$SMB_PNAME.$1"
+
+DOsave="N"				# Assume No Save
+
+	if [ -n "$2" ]; then				# Display a Narrative/Instructions Dialog
+		zenity --info --width=350 --timeout=$YADTIMEOUTDELAY \
+		--title="Edit : $SMB_FILE" \
+		--text="$2"
+	fi
+
+	if [ -f $SMB_FILE ]			# read the contents of the file if it exists
+	then
+		SMB_FILE_CONTENTS=$(cat $SMB_FILE)
+	else
+		SMB_FILE_CONTENTS=""
+	fi
+
+EDIT_TXT=$(zenity --text-info --width=350 --height=500 \
+	--title="Edit : $SMB_FILE" \
+	--editable \
+	--checkbox="Save $SMB_FILE?" \
+	 <<<$SMB_FILE_CONTENTS \
+	)
+
+	case $? in			# $? is the zenity return code
+		0)DOsave="Y" ;;		# zenity/yad returns 0 for OK so save the  file
+		1|70) ;;		# zenity/yad returns 1 for Cancel (Timeout or Close if --default-cancel is set)
+		-1|252|255) ;;		# Just here to consider any other exit return codes (see zenity and yad documentation)
+	esac
+					# Exit with three variables set
+					# DOsave = "Y" or "N"
+					# EDIT_TXT = whatever was returned from the edit *"" if Cancelled*
+					# SMB_FILE = Name of the file to save
+}
+# ------------ END edit-file ---------
+#------------- edit-subnets --------------------
+function edit-subnets() {
+
+	SMB_NARRATIVE="<span foreground='blue'><b><big>Enter subnets in the format xxx.xxx.xxx.xxx/mm\nor xxx.xxx.xxx.xxx or xxx.xxx.xxx\n\n</big>ie 192.168.1.0/24\nor 172.162.2.0\nor 10.0.3</b></span>"
+	edit-file subnets "$SMB_NARRATIVE"
+
+if [ $DOsave = "Y" ]; then
+	SMB_FILE_OUT=$(echo "$EDIT_TXT" \
+	|grep -o -E '([0-9]{1,3}\.){2}[0-9]{1,3}' \
+	|awk -v mask=".0/24" 'BEGIN{OFS=""} {print $1,mask ;} ' \
+	|sort -u \
+	)
+	echo "$SMB_FILE_OUT"| sed -e '/^$/d' >$SMB_FILE	# Save any valid input to $SMB_FILE ignoring blanks
+fi
+}
+# ------------ END edit-subnets ---------
+#------------- edit-servers --------------------
+function edit-servers() {
+
+	SMB_NARRATIVE="<span foreground='blue'><b><big>Enter servers in the format xxx.xxx.xxx.xxx,name\n\n</big>ie 192.168.1.106,Nas1\nor 172.162.2.6	Server2</b>\n\nSeparate the two fields with <b>ONE</b> comma (,) or <b>ONE</b> TAB\n\nPut each server on a separate line</span>"
+	edit-file servers "$SMB_NARRATIVE"
+
+	if [ $DOsave = "Y" ]; then
+		SMB_FILE_OUT=$(echo -n "$EDIT_TXT" \
+		|grep -E '\b((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\.)){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))\b' \
+		|awk 'BEGIN{FS="[,\t]";OFS=""} {print $1,",",$2,"\n" ;} ' \
+		|sort -u -t "," -k1,1 \
+		)				# grep extracts only Valid IP addresses and discards invalid
+
+	echo "$SMB_FILE_OUT"| sed -e '/^$/d' >$SMB_FILE	# Save any valid input to $SMB_FILE ignoring blanks
+
+	fi
+}
+# ------------ END edit-servers ---------
+#------------- scan-subnets --------------
+# We scan subnets with nmap. This is slower than arp-scan and could take 30-40 seconds per subnet
+function scan-subnets() {
+
+# look for subnets file
+
+	if [ -f $SMB_PNAME.subnets ]; then
+		SCAN_SUBNETS=$(cat $SMB_PNAME.subnets |grep -v $SMB_SUBNET|sort -u ) # remove any current entry for this subnet and select only unique lines (No duplicates)
+	fi
+
+	if [ -n "$SCAN_SUBNETS" ]; then
+		if [ -z "$SMB_SERVERS_AND_NAMES" ]; then
+			SCAN_KNOWN_SERVERS="None"
+		else
+			SCAN_KNOWN_SERVERS=$SMB_SERVERS_AND_NAMES
+		fi
+		SCAN_SUBNETS=$(awk 'BEGIN{FS="\n";OFS=""} {print "FALSE\n",$1 ;} '<<<$SCAN_SUBNETS)
+
+		OUT=$(yad --list --geometry=500x500 --separator="|" --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
+			--window-icon $YAD_ICON --image $YAD_ICON \
+			--checklist \
+			--multiple \
+			--title="Subnets to Scan" \
+			--text="<span><b><big><big>Contents of $SMB_PNAME.subnets\n\n</big>Select Any that you want to Scan\nthen Proceed to scan selected Subnets</big></b></span>\n\nWe can already see these servers\n$SCAN_KNOWN_SERVERS\n" \
+			--columns=2 \
+			--column="Sel" \
+			--column="Subnet" \
+			--button="Edit Subnets":4 \
+			--button="Don't scan any":3 \
+			--button="Scan Selected":2 \
+			<<< "$SCAN_SUBNETS"
+			)
+		if [ $? = "4" ]
+			then
+				edit-subnets				# edit the subnets file
+				scan-subnets				# call this function again to scan any new subnets
+		fi						# Falls though to selection below
+
+		if [ -n "$OUT" ]					# if anything was selected
+			then
+			SCAN_SUBNETS=$(echo "$OUT" \
+			| awk 'BEGIN{FS="|";OFS=""} {print $2;} '  \
+			)						# Select the subnets to scan
+
+			Stmp_out=$(mktemp --tmpdir `basename $0`.XXXXXXX)	# Somewhere to store output
+
+			while IFS= read -r S_SN; do
+				show-progress "Scanning" "Finding Servers on $S_SN" \
+				"nmap -oG $Stmp_out --append-output -sn -PS2049 $S_SN" 	# find out what machines are available on the other subnets
+			done <<<$SCAN_SUBNETS
+	
+			SMB_SUBNET_IPS=$(cat "$Stmp_out" \
+			|grep "Status: Up" \
+			|grep -o -E '([0-9]{1,3}\.){3}[0-9]{1,3}' \
+			|sort -u
+			)
+			
+			rm -f $Stmp_out			# delete temp file after reading content
+
+			SMB_SUBNET_SERVERS=""
+
+			for S_IP in $(echo "$SMB_SUBNET_IPS")
+			do
+				echo "# Scanning ... $S_IP"			# Tell zenity what we are doing 
+#				SMB_TMP=$(nc -zvw3 $S_IP $NC_PORT 2>&1)
+				SMB_TMP=$(smbclient -g -L $S_IP -N)	# This is much faster than NC and gives the same return code (0-Sucess 1-Fail)
+				if [ $? = "0" ]				# if connected sucessfully add this IP as an SMB server
+				then
+					S_NAME=`nmblookup -A $S_IP |grep "<00>"|grep -vi '<group>'|cut -d" " -s -f1`	#Find the NETBIOS name
+					SMB_SUBNET_SERVERS=$(echo "$SMB_SUBNET_SERVERS\n$S_IP,$S_NAME")
+				fi
+			done> >(zenity --progress --pulsate  --width=250 --auto-close --no-cancel \
+				--title="Scanning for SMB servers" \
+				--text="Scanning .." \
+				--percentage=0)					# Track progress on screen
+
+
+			if [ -n "$SMB_SUBNET_SERVERS" ]; then
+
+				SMB_SERVERS_FILE=""
+				if [ -f $SMB_PNAME.servers ]; then # Get all from the existing .servers file
+					SMB_SERVERS_FILE=$(cat $SMB_PNAME.servers)
+ 				fi
+				SMB_NEW_SERVERS=$(echo -e "$SMB_SERVERS_FILE\n$SMB_SUBNET_SERVERS"|sort -u -t "," -k1,1) # remove any duplicates				
+				echo "$SMB_NEW_SERVERS"|sed -e '/^$/d'|sort -u -t "," -k1,1 > $SMB_PNAME.servers	# Append new Servers found to Servers file for later processing, Ignore blank lines
+	
+			fi
+		fi
+	else
+		zenity	--question --no-wrap \
+			--title="No subnets found" \
+			--text="No subnets found in $SMB_PNAME.subnets\n\nEdit the $SMB_PNAME.subnets file\nand try again?"
+		if [ $? = "0" ]
+		then
+			edit-subnets				# edit the subnets file
+			scan-subnets				# call this function again to scan any new subnets
+		fi
+	fi							# end scan subnets
+}
+#------------ END scan-subnets--------
+#------------ show-progress ----------
 # A function to show a progress countdown for a command that might not be intantanious (Return the output from that command in the temp file $SPtmp_out
 function show-progress() {
 
@@ -141,7 +324,7 @@ function show-progress() {
 
 	SP_RTN=$(cat $SPtmp_out) 							# Read any error message or output from command ($3) from the tmp file 
 	rm -f $SPtmp_out								# delete temp file after reading content
-} 											# return the output from the command in the variable  $SP_RTN	
+} 					# return the output from the command in the variable  $SP_RTN	
 # ---------- unmount -------------------
 # ---------- umount and trap any error message
 
@@ -311,6 +494,8 @@ function select-share() {
 		--list --radiolist\
        		--columns=4 \
 		--button="Exit":1 \
+		--button="Edit Servers":4 \
+		--button="Scan Subnets":3 \
 		--button="Select":2 \
 		--column "Sel" \
 		--column "IP" \
@@ -318,10 +503,18 @@ function select-share() {
 		--column "Share" \
 	 	<<<"$SELECT_VOLS"
 	)
-	
-	if [ $? = "1" ]
-		then exit
-	fi
+	case $? in					# $? is the return code from the zenity/yad call
+		0|2) ;;					# zenity/yad returns 0 for OK 2 is Select Button
+		1|70) exit ;;				# Exit Button Selected
+
+		3) scan-subnets	;do-exit;;		# Scan the subnets and Restart the script with any 
+							# new possible server(s) in the .servers file
+							# *WILL RESTART THE WHOLE SCRIPT*
+
+		4) edit-servers ;do-exit;;		# Edit .servers file directly *Will restart the script*
+
+		-1|252|255) ;;				# Just here to consider any other exit return codes (see zenity and yad documentation)
+	esac
 
 	SP_RTN=$(echo "$OUT" \
 	| cut -d "|" -s -f2,3,4 \
@@ -388,17 +581,17 @@ fi
 # We need to use awk to add the commas into it to use as input to mount
 
 SMB_UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2 ;} '  <<<$1)
-SMB_UNAME=$2						# Get the actual name of the calling user/script
+SMB_PNAME=$2						# Get the actual name of the calling user/script
 #
-if [ -f $SMB_UNAME.ini ]; then
-	. $SMB_UNAME.ini				# include the variables from the .ini file (Will orerwrite the above if $2.ini found)
+if [ -f $SMB_PNAME.ini ]; then
+	. $SMB_PNAME.ini				# include the variables from the .ini file (Will orerwrite the above if $2.ini found)
 fi
-if [ -f $SMB_UNAME.last ]; then						
-	. $SMB_UNAME.last				# load last sucessful mounted options if they exist (Overwrites .ini)
+if [ -f $SMB_PNAME.last ]; then						
+	. $SMB_PNAME.last				# load last sucessful mounted options if they exist (Overwrites .ini)
 fi
 
-if [ ! -z $SMB_UNAME ] ; then
-	MOUNT_POINT_ROOT=$SMB_MOUNT_POINT"/$SMB_UNAME"	# Append the user calling user name if set as $2
+if [ ! -z $SMB_PNAME ] ; then
+	MOUNT_POINT_ROOT=$SMB_MOUNT_POINT"/$SMB_PNAME"	# Append the user calling user name if set as $2
 	if [ ! -d $MOUNT_POINT_ROOT ]; then
 		mkdir $MOUNT_POINT_ROOT				# make the mountpoint directory if required.
 	fi
@@ -410,8 +603,8 @@ if [ $? = "0" ]; then
 	USEYAD=true 						# Use yad if we can (Maybe suggest to install later ..note to self.. TBD)
 	export GDK_BACKEND=x11					# needed to make yad work correctly
 
-	if [ -f $SMB_UNAME.png ]; then
-		YAD_ICON=$SMB_UNAME.png 			# Use our Icon if we can ($0.png is an icon of a timecapsule
+	if [ -f $SMB_PNAME.png ]; then
+		YAD_ICON=$SMB_PNAME.png 			# Use our Icon if we can ($0.png is an icon of a timecapsule
 	       							# (Not required but just nice if we can)
 	else
 		YAD_ICON=gnome-fs-smb				# Default Icon in the YadDialogs from system
@@ -428,20 +621,36 @@ fi
 
 # Start Processing
 
+# look for subnets file
+# if it doesnt't exist make one and add our subnet to it. ie. 192.168.1.0/24
+
+SMB_SUBNET=$(ip route | grep -E '([0-9]{1,3}\.){3}[0-9]{1,3}'/ |cut -d" " -s -f1 |grep -v 169.254 )
+
+if [ -f $SMB_PNAME.subnets ]; then
+	SMB_CURRENT_SUBNETS=$(cat $SMB_PNAME.subnets |grep -v $SMB_SUBNET ) # remove any current entry for this subnet
+fi
+
+echo -e "$SMB_SUBNET\n$SMB_CURRENT_SUBNETS" > $SMB_PNAME.subnets 	# recreate .subnets Add this subnet at the top
+
 # Find the available Servers on this subnet
 	show-progress "Initializing" "Finding Servers" \
 	"nmblookup '*'"									# find out what SMB servers are available on this subn
-									
-	SMB_SERVERS=$(echo "$SP_RTN" \
+		
+	SMB_SERVERS_FILE=""
+	if [ -f $SMB_PNAME.servers ]; then	# Get all from the existing .servers file
+		SMB_SERVERS_FILE=$(cat $SMB_PNAME.servers)
+	fi
+	SMB_SERVERS=$(echo -e "$SP_RTN\n$SMB_SERVERS_FILE" \
 		|grep -E -o '([0-9]{1,3}\.){3}[0-9]{1,3}' \
-		|sort
-		)									# Parse a list of ONLY the IP Addresses (grep -E -o '([0-9]{1,3}\.){3}[0-9]{1,3}')
+		|sort -u -t "," -k1,1
+		)
+									# Parse a list of ONLY the IP Addresses (grep -E -o '([0-9]{1,3}\.){3}[0-9]{1,3}')
 #Find the available Shares/Volumes on the Servers found above
 	AVAILABLE_VOLS=""								# Clear the variables
 	SMB_SERVERS_AND_NAMES=""
 
 	for S_IP in $(echo "$SMB_SERVERS" | sed -e '/^$/d' )			# Find all available shares on all servers | sed -e '/^$/d' ignores blank lines
-	do										# Parse a list of IP addresses and NETBIOS names (2 columns IP and NETBIOS name)
+	do									# Parse a list of IP addresses and NETBIOS names (2 columns IP and NETBIOS name)
 		show-progress "Initializing" "Finding Shares on $S_IP" \
 		"smbclient -g -L $S_IP $SMBCLIENT_USER"
 
@@ -468,10 +677,10 @@ fi
 InputPending=true									# Haven't got valid user input yet
 while $InputPending
 do
-		if $USEYAD ; then							# Use zad if we can (Maybe suggest to install later ..note to self.. TBD)
-# Format the server list for YAD dropdown list
-		CHECK_SRV=""								# Start with a blank list
-		if [ -n "$SMB_SERVERS_AND_NAMES" ]; then				# if we found any servers
+		if $USEYAD ; then			# Use zad if we can				
+							# Format the server list for YAD dropdown list
+		CHECK_SRV=""				# Start with a blank list
+		if [ -n "$SMB_SERVERS_AND_NAMES" ]; then	# if we found any servers
 			CHECK_SRV=$(echo "$SMB_SERVERS_AND_NAMES" \
 			| sed -e '/^$/d' \
 			| grep -iwv $SMB_IP \
@@ -581,7 +790,7 @@ do
 			if $USEYAD ; then		# Use yad if we can
 				SP_RTN=$(yad --form  --separator="," --center --on-top --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
 					--image=document-save \
-					--title="Save $SMB_UNAME.ini" \
+					--title="Save $SMB_PNAME.ini" \
 					--text="\n<span><b><big><big>Your Server/Share data Input</big></big></b></span>\n" \
 					--field="IP Address of SMB Server ":RO "$tSMB_IP" \
 					--field="Volume/Share to mount ":RO "$tSMB_VOLUME" \
@@ -594,7 +803,7 @@ do
 				)
 			else
 				SP_RTN=$(zenity --question --no-wrap \
-					--title="Save $SMB_UNAME.ini" \
+					--title="Save $SMB_PNAME.ini" \
 					--text="\n Your Server/Share data Input \n \
 						IP Address of SMB Server - "$tSMB_IP"    \n \
 						Volume/Share to mount - "$tSMB_VOLUME"    \n \
