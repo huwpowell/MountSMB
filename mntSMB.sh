@@ -271,10 +271,10 @@ function scan-subnets() {
 			do
 				echo "# Scanning ... $S_IP"			# Tell zenity what we are doing 
 #				SMB_TMP=$(nc -zvw3 $S_IP $NC_PORT 2>&1)
-				SMB_TMP=$(smbclient -g -L $S_IP -N)	# This is much faster than NC and gives the same return code (0-Sucess 1-Fail)
+				SMB_TMP=$(smbclient -g -L $S_IP -N 2>&1)	# This is much faster than NC and gives the same return code (0-Sucess 1-Fail)
 				if [ $? = "0" ]				# if connected sucessfully add this IP as an SMB server
 				then
-					S_NAME=`nmblookup -A $S_IP |grep "<00>"|grep -vi '<group>'|cut -d" " -s -f1`	#Find the NETBIOS name
+					S_NAME=$(nmblookup -A $S_IP |grep "<00>"|grep -vi '<group>'|cut -d" " -s -f1|tr -d '\t')	#Find the NETBIOS name |tr -d '\t' removes the leading tab characters
 					SMB_SUBNET_SERVERS=$(echo "$SMB_SUBNET_SERVERS\n$S_IP,$S_NAME")
 				fi
 			done> >(zenity --progress --pulsate  --width=250 --auto-close --no-cancel \
@@ -552,7 +552,15 @@ if [ $? != "0" ]; then
        	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"smbclient\n"		# indicate not installed		
 fi
 
-#3.. Look for yad
+#3.. Look for nmap
+
+which nmap >>/dev/null 2>&1					# see if nmap is installed
+if [ $? != "0" ]; then
+       	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"nmap\n"		# indicate not installed		
+fi
+
+
+#4.. Look for yad
 
 which yad >>/dev/null 2>&1					# see if yad is installed
 if [ $? != "0" ]; then
@@ -565,7 +573,7 @@ if [ $? != "0" ]; then
 fi
 
 if [ -n "$NOTINSTALLED_MSG" ]; then
-	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient' UBUNTU/Debian"
+	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client nmap' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient nmap' UBUNTU/Debian"
 
 	zenity	--error --no-wrap \
 	--title="Missing Dependancies" \
@@ -658,7 +666,7 @@ echo -e "$SMB_SUBNET\n$SMB_CURRENT_SUBNETS" > $SMB_PNAME.subnets 	# recreate .su
 		SMB_VOLS=$(sed 's/Disk/'"$S_IP"'/g' <<<$SMB_VOLS)			# Replace the word "Disk" with the IP of the concerned server $S_IP
 		AVAILABLE_VOLS=$(echo -e "$SMB_VOLS\n$AVAILABLE_VOLS")			# Append available servers shares to this servers shares 
 
-		S_NAME=`nmblookup -A $S_IP |grep "<00>"|grep -vi '<group>'|cut -d" " -s -f1`	#1. Find the NETBIOS name
+		S_NAME=$(nmblookup -A $S_IP |grep "<00>"|grep -vi '<group>'|cut -d" " -s -f1|tr -d '\t')	#1. Find the NETBIOS name
 		SMB_SERVERS_AND_NAMES=$(echo -e -n "$SMB_SERVERS_AND_NAMES\n$S_IP $S_NAME")	#2. Append the IP address and NETBIOS name to the list in $SMB_SERVERS_AND_NAMES
 	done
 
@@ -677,10 +685,10 @@ echo -e "$SMB_SUBNET\n$SMB_CURRENT_SUBNETS" > $SMB_PNAME.subnets 	# recreate .su
 InputPending=true									# Haven't got valid user input yet
 while $InputPending
 do
-		if $USEYAD ; then			# Use zad if we can				
-							# Format the server list for YAD dropdown list
-		CHECK_SRV=""				# Start with a blank list
-		if [ -n "$SMB_SERVERS_AND_NAMES" ]; then	# if we found any servers
+		if $USEYAD ; then							# Use zad if we can (Maybe suggest to install later ..note to self.. TBD)
+# Format the server list for YAD dropdown list
+		CHECK_SRV=""								# Start with a blank list
+		if [ -n "$SMB_SERVERS_AND_NAMES" ]; then				# if we found any servers
 			CHECK_SRV=$(echo "$SMB_SERVERS_AND_NAMES" \
 			| sed -e '/^$/d' \
 			| grep -iwv $SMB_IP \
