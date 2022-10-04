@@ -19,7 +19,7 @@ Authors: Huw Hamer Powell <huw@huwpowell.com>
 
 a mntSMB.desktop file is provided (Copy to $HOME/Desktop)
 
-need to use sudo.. so run the skeleton script mntSMB which will call te script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
+need to use sudo.. so run the skeleton script mntSMB which will call the script (mntSMB.sh) using sudo... Or from the CLI or Gnome Desktop
 
 # Ensure that you are a valid sudoer and add this line to /etc/sudoers
 
@@ -37,7 +37,7 @@ It does not matter if you don't , Just cleaner if you do :)
 Version 3, enhanced for Ubuntu 13.X+, Fedora 35+, and similar distros.
 Runs on all GNU/Linux distros (install cifs-utils)
 
-Version 4, Crafted a mod for FC32+ and added some visible interactions using zenity/yad ..Else silent) HHP 20210509
+Version 4, Crafted a mod for OpenSUSE and added some visible interactions using zenity/yad ..Else silent) HHP 20210509
 Added the use of zenity/yad to produce dialog in Gnome
 Added proper mount options to cope with SMB Vers=1.0 and x display icons for mounted drives
 
