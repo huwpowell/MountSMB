@@ -13,7 +13,7 @@ UBUNTU needs cifs-utils and smb-client (apt install cifs-utils smb-client)
 Authors: Huw Hamer Powell <huw@huwpowell.com>
 
 1) Install cifs-utils (sudo dnf install cifs-utils) (probably not required in FC32 but try without first)
-2)If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
+2) If you want to use the full functionality of nice dialog boxes install yad . otherwise we default to zenity *not so nice but it works)
 3) Change the first four variables according to your configuration. Or maintain a .ini file with the four variables. Can be created by the script if neccessary
 4) Run this program at login or from your $HOME  when your network is ready
 
