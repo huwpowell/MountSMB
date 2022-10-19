@@ -257,7 +257,7 @@ do
 
 			while IFS= read -r S_SN; do
 				show-progress "Scanning" "Finding Servers on $S_SN" \
-				"nmap -oG $Stmp_out --append-output -sn -PS2049 $S_SN" 	# find out what machines are available on the other subnets
+				"nmap -n -oG $Stmp_out --append-output -sn -PS$NC_PORT $S_SN" 	# find out what machines are available on the other subnets
 			done <<<$SCAN_SUBNETS
 	
 			_SUBNET_IPS=$(cat "$Stmp_out" \
@@ -273,7 +273,7 @@ do
 			for S_IP in $(echo "$_SUBNET_IPS")
 			do
 				echo "# Scanning ... $S_IP"			# Tell zenity what we are doing 
-#				_TMP=$(nc -zvw3 $S_IP $NC_PORT 2>&1)
+#				_TMP=$(nc -n -zw1 $S_IP $NC_PORT 2>&1)
 				_TMP=$(smbclient -g -L $S_IP -N 2>&1)	# This is much faster than NC and gives the same return code (0-Sucess 1-Fail)
 				if [ $? = "0" ]				# if connected sucessfully add this IP as an SMB server
 				then
