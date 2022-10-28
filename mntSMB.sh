@@ -121,16 +121,22 @@ echo '_PASSWORD="'"$_PASSWORD"'"	# Password for the Above SMB Server User' >>$_P
 echo '_MOUNT_POINT="'"$_MOUNT_POINT"'"	# Base folder for mounting (/media recommended but could be /mnt or other choice)' >>$_PNAME.$VAREXTN
 echo "">>$_PNAME.$VAREXTN
 echo "#-- Created `date` by `whoami` ----">>$_PNAME.$VAREXTN
+chown --reference $_PNAME $_PNAME.$VAREXTN			# Give ownership to the caller
+
 } # NOTE : The user name is not saved (commented out) to enable the hostname to be set next time around. Uncomment the line in the .ini file if a specific user name is required
 
 #-------------END save-vars-----------
 #------------ do-exit ------------------
 function do-exit () {
 
-		zenity --warning --no-wrap --width=250 --timeout=$TIMEOUTDELAY\
-			--title="Restart" \
-			--text="<span foreground='red'><big><big><b>Exiting</b></big></big></span><span><b>\n\nResart for changes to take effect</b></span>"
-		exit 0				# Shutdown -- Go no further
+	zenity --warning --no-wrap --width=250 --timeout=1\
+		--title="Restart" \
+		--text="<span foreground='red'><big><big><b>Restarting</b></big></big></span><span><b>\n\nResart for changes to take effect</b></span>"
+
+	_UID=$(echo $_UID|tr ',' ' ')		# Replace the comma with a space (as was passed originally)
+	exec "$_MY_PNAME" "$_UID" "$_PNAME"	# Restart the script with new possible changes in the files
+
+#		exit 0				# Shutdown -- Go no further
 }
 #------------ END do-exit
 #------------- edit-file --------------------
@@ -185,6 +191,8 @@ if [ $DOsave = "Y" ]; then
 	|sort -u \
 	)
 	echo "$_FILE_OUT"| sed -e '/^$/d' >$_FILE	# Save any valid input to $_FILE ignoring blanks
+	chown --reference $_PNAME $_FILE		# Give ownership to the caller
+
 fi
 }
 # ------------ END edit-subnets ---------
@@ -199,10 +207,10 @@ function edit-servers() {
 		|grep -E '\b((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\.)){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))\b' \
 		|awk 'BEGIN{FS="[,\t]";OFS=""} {print $1,",",$2,"\n" ;} ' \
 		|sort -u -t "," -k1,1 \
-		)				# grep extracts only Valid IP addresses and discards invalid
+		)			# grep extracts only Valid IP addresses and discards invalid
 
-	echo "$_FILE_OUT"| sed -e '/^$/d' >$_FILE	# Save any valid input to $_FILE ignoring blanks
-
+		echo "$_FILE_OUT"| sed -e '/^$/d' >$_FILE	# Save valid input to $_FILE ignoring blanks
+		chown --reference $_PNAME $_FILE		# Give ownership to the caller
 	fi
 }
 # ------------ END edit-servers ---------
@@ -293,8 +301,9 @@ do
 					_SERVERS_FILE=$(cat $_PNAME.servers)
  				fi
 				_NEW_SERVERS=$(echo -e "$_SERVERS_FILE\n$_SUBNET_SERVERS"|sort -u -t "," -k1,1) # remove any duplicates				
-				echo "$_NEW_SERVERS"|sed -e '/^$/d'|sort -u -t "," -k1,1 > $_PNAME.servers	# Append new Servers found to Servers file for later processing, Ignore blank lines
-	
+			# Append new Servers found to Servers file for later processing, Ignore blank lines
+				echo "$_NEW_SERVERS"|sed -e '/^$/d'|sort -u -t "," -k1,1 > $_PNAME.servers
+				chown --reference $_PNAME $_PNAME.servers	# Give ownership to the caller
 			fi
 		fi
 	else
@@ -568,7 +577,8 @@ done
 if [ ! -z $_PNAME ] ; then
 	MOUNT_POINT_ROOT=$_MOUNT_POINT"/$_PNAME"	# Append the user calling user name if set as $2
 	if [ ! -d $MOUNT_POINT_ROOT ]; then
-		mkdir $MOUNT_POINT_ROOT				# make the mountpoint directory if required.
+		mkdir $MOUNT_POINT_ROOT			# make the mountpoint directory if required.
+		chown --reference $_PNAME $MOUNT_POINT_ROOT	# Give ownership to the caller
 	fi
 fi
 }
@@ -638,8 +648,9 @@ fi
 # The UID is passed as $arg1 i.e "./mntSMB $_ID" (see the mntSMB script) comes as 'uid=nnnn gid=nnnn'
 # We need to use awk to add the commas into it to use as input to mount
 
+_MY_PNAME=$0					# Get the name of THIS script (For resarting later on)
 _UID=$(awk 'BEGIN{FS=" ";OFS=""} {print $1,",",$2 ;} '  <<<$1)
-_PNAME=$2						# Get the actual name of the calling user/script
+_PNAME=$2					# Get the actual name of the calling user/script
 #
 if [ -f $_PNAME.ini ]; then
 	. $_PNAME.ini				# include the variables from the .ini file (Will orerwrite the above if $2.ini found)
@@ -648,18 +659,18 @@ if [ -f $_PNAME.last ]; then
 	. $_PNAME.last				# load last sucessful mounted options if they exist (Overwrites .ini)
 fi
 
-select-mountpoint					# Define to root mount point
+select-mountpoint				# Define to root mount point
 
-which yad >>/dev/null 2>&1					# see if yad is installed
+which yad >>/dev/null 2>&1			# see if yad is installed
 if [ $? = "0" ]; then
-	USEYAD=true 						# Use yad if we can
-	export GDK_BACKEND=x11					# needed to make yad work correctly
+	USEYAD=true 				# Use yad if we can
+	export GDK_BACKEND=x11			# needed to make yad work correctly
 
 	if [ -f $_PNAME.png ]; then
-		YAD_ICON=$_PNAME.png 			# Use our Icon if we can ($0.png is an icon of a timecapsule
-	       							# (Not required but just nice if we can)
+		YAD_ICON=$_PNAME.png 		# Use our Icon if we can ($0.png is an icon of a timecapsule
+	       					# (Not required but just nice if we can)
 	else
-		YAD_ICON=gnome-fs-smb				# Default Icon in the YadDialogs from system
+		YAD_ICON=gnome-fs-smb		# Default Icon in the YadDialogs from system
 #		YAD_ICON=gnome-fs-ftp				# Default Icon in the YadDialogs from system
 #		YAD_ICON=gnome-fs-nfs				# Default Icon in the YadDialogs from system
 #		YAD_ICON=drive-harddisk				# Default Icon in the YadDialogs from system
@@ -683,6 +694,7 @@ if [ -f $_PNAME.subnets ]; then
 fi
 
 echo -e "$_SUBNET\n$_CURRENT_SUBNETS" > $_PNAME.subnets 	# recreate .subnets Add this subnet at the top
+chown --reference $_PNAME $_PNAME.subnets			# Give ownership to the caller
 
 # Find the available Servers on this subnet
 	show-progress "Initializing" "Finding Servers" \
@@ -818,7 +830,7 @@ do
 	t_IP="$t_IP "					# Add a trailing space for the 'cut' commmand below
 	t_IP=$(echo "$t_IP" \
 		|cut -d" " -s -f1 \
-		|tr -d '[:space:]')					# Get the IP address ONLY from the input
+		|tr -d '[:space:]')			# Get the IP address ONLY from the input
 	
 	ENTRYerr=""					# Collect the blank field names 
 	if [ -z "$t_IP" ]; then ENTRYerr="$ENTRYerr IP,"
@@ -954,11 +966,15 @@ else		# Not yet mounted so Proceed to attempt mounting
 		if [ "$MOUNT_POINT" != "$MOUNT_POINT_ROOT" ]; then			# Dont try to create the mount root if mount point is not set correcly
 
 			if [ ! -d "$MOUNT_POINT" ]; then
-				mkdir "$MOUNT_POINT"		# make the mountpoint directory if required.
+				mkdir "$MOUNT_POINT"	# make the mountpoint directory if required.
+				chown --reference $_PNAME $MOUNT_POINT	# Give ownership to the caller
 			fi
 		fi
 # ---------- mount and trap any error message
 		MNT_CMD="mount -t cifs '$_PATH' '$MOUNT_POINT' -o $_UID,user=$_USER,pass=$_PASSWORD,rw,file_mode=0777,dir_mode=0777,x-gvfs-show"
+echo ..
+echo $MNT_CMD						# Show the user what we are doing *CLI
+echo ..
 		show-progress "Mounting" "Attempting to mount $_PATH" "$MNT_CMD"
 		
 
