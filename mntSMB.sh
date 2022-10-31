@@ -119,7 +119,8 @@ echo "">>$_PNAME.$VAREXTN
 echo '_IP="'"$_IP"'"		# e.g. 192.168.1.100' >>$_PNAME.$VAREXTN
 echo '_VOLUME="'"$_VOLUME"'"	# Whatever you named the Volume share' >>$_PNAME.$VAREXTN
 echo '_USER="'"$_USER"'"		# The User id ON THE SMB server' >>$_PNAME.$VAREXTN
-echo '_PASSWORD="'"$_PASSWORD"'"	# Password for the Above SMB Server User' >>$_PNAME.$VAREXTN
+echo '_PASSWORD="'"$_PASSWORD"'"	# Encrypted Password for the Above SMB Server User' >>$_PNAME.$VAREXTN
+echo '# You can delete the password but do not alter it otherwise the script will fail to mount anything' >>$_PNAME.$VAREXTN
 echo '_MOUNT_POINT="'"$_MOUNT_POINT"'"	# Base folder for mounting (/media recommended but could be /mnt or other choice)' >>$_PNAME.$VAREXTN
 echo "">>$_PNAME.$VAREXTN
 echo "#-- Created `date` by `whoami` ----">>$_PNAME.$VAREXTN
@@ -608,7 +609,8 @@ export -f select-mounted select-share select-mountpoint
 # We need to have
 # 1. cifs-utils/samba-client to allow the searching for, mounting and manipulation of cifs volumes
 # 2. nmblookup and smbclient to snoop what volumes are shared on the SMB servers available
-# 3. yad to give functional and usable dialog inputs
+# 3. openssl for password encryption
+# 4. yad to give functional and usable dialog inputs
 
 NOTINSTALLED_MSG=""						# Start with a blank message
 #1.. Look for nmblookup
@@ -632,8 +634,13 @@ if [ $? != "0" ]; then
        	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"nmap\n"		# indicate not installed		
 fi
 
+#4.. Look for openssl
+which openssl >>/dev/null 2>&1					# see if openssl is installed
+if [ $? != "0" ]; then
+       	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"openssl\n"		# indicate not installed		
+fi
 
-#4.. Look for yad
+#5.. Look for yad
 
 which yad >>/dev/null 2>&1					# see if yad is installed
 if [ $? != "0" ]; then
@@ -646,7 +653,7 @@ if [ $? != "0" ]; then
 fi
 
 if [ -n "$NOTINSTALLED_MSG" ]; then
-	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client nmap' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient nmap' UBUNTU/Debian"
+	NOTINSTALLED_MSG=$NOTINSTALLED_MSG"not found!\n\nInstall cifs-utils and/or samba-client packages\n Using\n\n 'sudo dnf install samba-client nmap openssl' (Fedora/RedHat)\n\n'sudo apt install cifs-utils smbclient nmap openssl' UBUNTU/Debian"
 
 	zenity	--error --no-wrap \
 	--title="Missing Dependancies" \
