@@ -239,7 +239,7 @@ do
 		fi
 		SCAN_SUBNETS=$(awk 'BEGIN{FS="\n";OFS=""} {print "FALSE\n",$1 ;} '<<<$SCAN_SUBNETS)
 
-		OUT=$(yad --list --geometry=500x500 --separator="|" --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
+		OUT=$(yad --list --geometry=500x700 --separator="|" --on-top --close-on-unfocus --skip-taskbar --align=right --text-align=center --buttons-layout=spread --borders=25 \
 			--window-icon $YAD_ICON --image $YAD_ICON \
 			--checklist \
 			--multiple \
